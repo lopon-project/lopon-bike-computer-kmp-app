@@ -1,5 +1,6 @@
 package ru.lopon.domain.usecase
 
+import ru.lopon.core.metrics.MetricsAggregator
 import ru.lopon.domain.repository.LocationRepository
 import ru.lopon.domain.repository.SensorRepository
 import ru.lopon.domain.state.TripState
@@ -9,7 +10,8 @@ import ru.lopon.domain.state.TripStateManager
 class PauseTripUseCase(
     private val stateManager: TripStateManager,
     private val sensorRepository: SensorRepository,
-    private val locationRepository: LocationRepository
+    private val locationRepository: LocationRepository,
+    private val metricsAggregator: MetricsAggregator? = null
 ) {
 
     suspend operator fun invoke(): Result<Unit> {
@@ -18,8 +20,11 @@ class PauseTripUseCase(
             return Result.failure(IllegalStateException("Cannot pause: trip is not recording"))
         }
 
+        metricsAggregator?.pause()
+
         val paused = stateManager.pauseTrip()
         if (!paused) {
+            metricsAggregator?.resume()
             return Result.failure(IllegalStateException("Failed to transition to Paused state"))
         }
 
