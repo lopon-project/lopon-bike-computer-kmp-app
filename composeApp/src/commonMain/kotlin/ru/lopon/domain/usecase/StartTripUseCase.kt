@@ -6,6 +6,7 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import ru.lopon.core.IdGenerator
 import ru.lopon.core.TimeProvider
+import ru.lopon.core.metrics.MetricsAggregator
 import ru.lopon.domain.model.NavigationMode
 import ru.lopon.domain.model.Trip
 import ru.lopon.domain.repository.LocationRepository
@@ -19,10 +20,12 @@ class StartTripUseCase(
     private val sensorRepository: SensorRepository,
     private val locationRepository: LocationRepository,
     private val timeProvider: TimeProvider,
-    private val idGenerator: IdGenerator
+    private val idGenerator: IdGenerator,
+    private val metricsAggregator: MetricsAggregator? = null
 ) {
     private var sensorJob: Job? = null
     private var locationJob: Job? = null
+    private var metricsJob: Job? = null
 
     suspend operator fun invoke(mode: NavigationMode, scope: CoroutineScope): Result<Trip> {
         if (stateManager.currentState !is TripState.Idle) {
@@ -40,10 +43,17 @@ class StartTripUseCase(
             mode = mode
         )
 
-        // Переводим состояние в Recording
+
+        metricsAggregator?.reset()
+        metricsAggregator?.start()
+
+        subscribeMetrics(scope)
+
+
         val started = stateManager.startTrip(trip, mode)
         if (!started) {
             cancelDataSources()
+            metricsAggregator?.reset()
             return Result.failure(IllegalStateException("Failed to transition to Recording state"))
         }
 
@@ -94,12 +104,24 @@ class StartTripUseCase(
             .launchIn(scope)
     }
 
+    private fun subscribeMetrics(scope: CoroutineScope) {
+        metricsAggregator?.let { aggregator ->
+            metricsJob = aggregator.metrics
+                .onEach { metrics ->
+                    stateManager.updateMetrics(metrics)
+                }
+                .launchIn(scope)
+        }
+    }
+
 
     internal fun cancelDataSources() {
         sensorJob?.cancel()
         sensorJob = null
         locationJob?.cancel()
         locationJob = null
+        metricsJob?.cancel()
+        metricsJob = null
     }
 
     // Для будущих тестов

@@ -1,6 +1,7 @@
 package ru.lopon.domain.usecase
 
 import ru.lopon.core.TimeProvider
+import ru.lopon.core.metrics.MetricsAggregator
 import ru.lopon.domain.model.Trip
 import ru.lopon.domain.repository.LocationRepository
 import ru.lopon.domain.repository.SensorRepository
@@ -14,15 +15,16 @@ class StopTripUseCase(
     private val sensorRepository: SensorRepository,
     private val locationRepository: LocationRepository,
     private val timeProvider: TimeProvider,
-    private val startTripUseCase: StartTripUseCase? = null
+    private val startTripUseCase: StartTripUseCase? = null,
+    private val metricsAggregator: MetricsAggregator? = null
 ) {
 
     suspend operator fun invoke(): Result<Trip> {
         val currentState = stateManager.currentState
 
-        val (trip, distanceMeters) = when (currentState) {
-            is TripState.Recording -> currentState.trip to currentState.distanceMeters
-            is TripState.Paused -> currentState.trip to currentState.distanceMeters
+        val (trip, distanceMeters, currentMetrics) = when (currentState) {
+            is TripState.Recording -> Triple(currentState.trip, currentState.distanceMeters, currentState.metrics)
+            is TripState.Paused -> Triple(currentState.trip, currentState.distanceMeters, currentState.metrics)
             else -> return Result.failure(
                 IllegalStateException("Cannot stop: no active trip (current state: ${currentState::class.simpleName})")
             )
@@ -32,9 +34,13 @@ class StopTripUseCase(
 
         startTripUseCase?.cancelDataSources()
 
+        val finalMetrics = metricsAggregator?.currentMetrics ?: currentMetrics
+
+        metricsAggregator?.reset()
+
         val finishedTrip = trip.copy(
             endTimeUtc = timeProvider.currentTimeMillis(),
-            distanceMeters = distanceMeters
+            distanceMeters = finalMetrics.totalDistanceM
         )
 
         val saveResult = tripRepository.saveTrip(finishedTrip)
@@ -44,7 +50,7 @@ class StopTripUseCase(
             )
         }
 
-        val stopped = stateManager.stopTrip(finishedTrip)
+        val stopped = stateManager.stopTrip(finishedTrip, finalMetrics)
         if (!stopped) {
             return Result.failure(IllegalStateException("Failed to transition to Finished state"))
         }
