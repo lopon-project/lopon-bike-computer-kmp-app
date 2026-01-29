@@ -91,19 +91,13 @@ class TripStateManager {
     }
 
     fun switchMode(newMode: NavigationMode): Boolean {
-        return when (val current = _state.value) {
-            is TripState.Recording -> {
-                _state.value = current.copy(mode = newMode)
-                true
-            }
-
-            is TripState.Paused -> {
-                _state.value = current.copy(mode = newMode)
-                true
-            }
-
-            else -> false
+        val current = _state.value
+        _state.value = when (current) {
+            is TripState.Recording -> current.copy(mode = newMode)
+            is TripState.Paused -> current.copy(mode = newMode)
+            else -> return false
         }
+        return true
     }
 
     fun updateProgress(distanceMeters: Double, elapsedMs: Long, metrics: TripMetrics? = null): Boolean {

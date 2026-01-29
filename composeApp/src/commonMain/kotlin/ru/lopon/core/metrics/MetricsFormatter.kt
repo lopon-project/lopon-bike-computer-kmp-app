@@ -1,11 +1,12 @@
 package ru.lopon.core.metrics
 
 import kotlin.math.roundToInt
+import ru.lopon.core.settings.UnitConverter
 
 object MetricsFormatter {
 
     fun formatSpeedKmh(speedMs: Double, decimals: Int = 1): String {
-        val speedKmh = speedMs * 3.6
+        val speedKmh = UnitConverter.msToKmh(speedMs)
         return formatDouble(speedKmh, decimals)
     }
 

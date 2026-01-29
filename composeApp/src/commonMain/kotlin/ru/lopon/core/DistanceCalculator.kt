@@ -24,7 +24,8 @@ object DistanceCalculator {
         if (wheelCircumferenceMm !in MIN_WHEEL_CIRCUMFERENCE_MM..MAX_WHEEL_CIRCUMFERENCE_MM) {
             return Result.failure(
                 IllegalArgumentException(
-                    "Wheel circumference must be between $MIN_WHEEL_CIRCUMFERENCE_MM and $MAX_WHEEL_CIRCUMFERENCE_MM mm, " +
+                    "Wheel circumference must be between " +
+                            "$MIN_WHEEL_CIRCUMFERENCE_MM and $MAX_WHEEL_CIRCUMFERENCE_MM mm, " +
                             "but was $wheelCircumferenceMm mm"
                 )
             )

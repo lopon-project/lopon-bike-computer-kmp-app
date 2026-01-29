@@ -5,6 +5,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import ru.lopon.core.TimeProvider
 import ru.lopon.core.RealTimeProvider
+import ru.lopon.core.settings.UnitConverter
 import ru.lopon.domain.processing.DataFusionProcessor
 
 class MetricsAggregator(
@@ -32,7 +33,7 @@ class MetricsAggregator(
     fun processData(data: DataFusionProcessor.FusionResult, cadenceRpm: Double? = null) {
         if (startTimeMs == null) return
 
-        val speedMs = data.speedKmh / 3.6
+        val speedMs = UnitConverter.kmhToMs(data.speedKmh)
 
         val speed = speedCalculator.addSpeed(speedMs)
 
