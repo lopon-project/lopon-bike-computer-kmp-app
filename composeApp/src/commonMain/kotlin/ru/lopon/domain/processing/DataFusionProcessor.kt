@@ -1,5 +1,6 @@
 package ru.lopon.domain.processing
 
+import ru.lopon.core.settings.UnitConverter
 import ru.lopon.domain.model.GeoCoordinate
 
 
@@ -137,7 +138,7 @@ object DataFusionProcessor {
         val bearing = state.lastBearing ?: return null
 
         val timeSinceLastGps = (currentTimeUtc - lastGps.timestampUtc) / 1000.0 // секунды
-        val distanceMeters = (speedKmh / 3.6) * timeSinceLastGps
+        val distanceMeters = UnitConverter.kmhToMs(speedKmh) * timeSinceLastGps
 
         return movePoint(lastGps.coordinate, bearing, distanceMeters)
     }

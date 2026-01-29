@@ -1,5 +1,6 @@
 package ru.lopon.domain.processing
 
+import ru.lopon.core.settings.UnitConverter
 import ru.lopon.domain.model.SensorReading
 
 //TODO: Все константы для определения аномалий тоже пока выбраны на глаз, требуют реальных экспериментов и корректировок.
@@ -66,7 +67,7 @@ object SensorDataFilter {
 
         val distanceMeters = revolutions * (wheelCircumferenceMm / 1000.0)
         val speedMs = distanceMeters / timeDeltaSeconds
-        return speedMs * 3.6
+        return UnitConverter.msToKmh(speedMs)
     }
 
     fun validate(
@@ -95,7 +96,7 @@ object SensorDataFilter {
         }
 
         if (speedKmh != null && previousSpeedKmh != null) {
-            val speedDeltaMs = (speedKmh - previousSpeedKmh) / 3.6
+            val speedDeltaMs = UnitConverter.kmhToMs(speedKmh - previousSpeedKmh)
             val acceleration = kotlin.math.abs(speedDeltaMs / timeDeltaSeconds)
             if (acceleration > MAX_ACCELERATION_MS2) {
                 return ValidationResult.invalid(InvalidReason.ACCELERATION_TOO_HIGH)

@@ -222,6 +222,30 @@ object RouteCalculator {
         return (bearing + 360) % 360
     }
 
+    fun movePoint(start: GeoCoordinate, bearingDegrees: Double, distanceMeters: Double): GeoCoordinate {
+        val earthRadius = EARTH_RADIUS_METERS
+
+        val lat1 = start.latitude.toRadians()
+        val lon1 = start.longitude.toRadians()
+        val bearing = bearingDegrees.toRadians()
+        val angularDistance = distanceMeters / earthRadius
+
+        val lat2 = kotlin.math.asin(
+            sin(lat1) * cos(angularDistance) +
+            cos(lat1) * sin(angularDistance) * cos(bearing)
+        )
+
+        val lon2 = lon1 + atan2(
+            sin(bearing) * sin(angularDistance) * cos(lat1),
+            cos(angularDistance) - sin(lat1) * sin(lat2)
+        )
+
+        return GeoCoordinate(
+            latitude = lat2.toDegrees(),
+            longitude = lon2.toDegrees()
+        )
+    }
+
     private fun Double.toRadians(): Double = this * PI / 180.0
 
     private fun Double.toDegrees(): Double = this * 180.0 / PI
