@@ -15,16 +15,7 @@ import ru.lopon.domain.repository.SettingsRepository
 import ru.lopon.domain.repository.TripRepository
 import ru.lopon.domain.routing.RoutingService
 import ru.lopon.domain.state.TripStateManager
-import ru.lopon.domain.usecase.CreateRouteUseCase
-import ru.lopon.domain.usecase.ExportGpxUseCase
-import ru.lopon.domain.usecase.ImportGpxUseCase
-import ru.lopon.domain.usecase.PauseTripUseCase
-import ru.lopon.domain.usecase.ProcessLocationDataUseCase
-import ru.lopon.domain.usecase.ProcessSensorDataUseCase
-import ru.lopon.domain.usecase.ResumeTripUseCase
-import ru.lopon.domain.usecase.StartTripUseCase
-import ru.lopon.domain.usecase.StopTripUseCase
-import ru.lopon.domain.usecase.SwitchModeUseCase
+import ru.lopon.domain.usecase.*
 import ru.lopon.platform.BleAdapter
 import ru.lopon.platform.FileStorage
 import ru.lopon.platform.LocationProvider
@@ -146,7 +137,6 @@ class AppContainer(
         )
     }
 
-    // ============== Factory Methods ==============
 
     private fun createSensorRepository(): ru.lopon.domain.repository.SensorRepository {
         return BleBasedSensorRepository(bleAdapter)

@@ -13,7 +13,9 @@ enum class AppPermission {
 
     BLUETOOTH,
 
-    FILE_ACCESS
+    FILE_ACCESS,
+
+    NOTIFICATION
 }
 
 
