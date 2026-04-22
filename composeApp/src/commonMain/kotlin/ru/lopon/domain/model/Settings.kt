@@ -12,7 +12,7 @@ data class Settings(
     val language: AppLanguage = AppLanguage.SYSTEM,
     val movingSpeedThresholdKmh: Double = 2.0,
     val keepScreenOn: Boolean = true,
-    val mapStyle: MapStyle = MapStyle.AUTO,
+    val themeMode: ThemeMode = ThemeMode.SYSTEM,
     val lastBleDeviceId: String? = null,
     val lastBleDeviceName: String? = null
 ) {
@@ -38,8 +38,8 @@ enum class AppLanguage {
 }
 
 @Serializable
-enum class MapStyle {
-    AUTO,
+enum class ThemeMode {
+    SYSTEM,
     LIGHT,
     DARK
 }

@@ -104,14 +104,6 @@ class AppContainer(
         )
     }
 
-    val switchModeUseCase: SwitchModeUseCase by lazy {
-        SwitchModeUseCase(
-            stateManager = tripStateManager,
-            sensorRepository = createSensorRepository(),
-            locationRepository = createLocationRepository()
-        )
-    }
-
     val importGpxUseCase: ImportGpxUseCase by lazy {
         ImportGpxUseCase(
             fileStorage = fileStorage,
@@ -161,6 +153,9 @@ private class BleBasedSensorRepository(
     override fun observeReadings() = bleAdapter.observeWheelData()
 
     override suspend fun startScanning(): Result<Unit> {
+        if (bleAdapter.connectionState.value is ru.lopon.platform.BleConnectionState.Connected) {
+            return Result.success(Unit)
+        }
         val devices = bleAdapter.scan()
         if (devices.isEmpty()) {
             return Result.failure(Exception("No devices found"))

@@ -5,5 +5,6 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class GeoCoordinate(
     val latitude: Double,
-    val longitude: Double
-) 
+    val longitude: Double,
+    val bearing: Float? = null
+)

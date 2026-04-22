@@ -16,17 +16,7 @@ sealed class NavigationEvent {
 
     data object BleConnectionFailed : NavigationEvent()
 
-    data object BleNotRequired : NavigationEvent()
-
     data object GpsAcquired : NavigationEvent()
-
-    data object GpsFailed : NavigationEvent()
-
-    data object GpsNotRequired : NavigationEvent()
-
-    data object RouteLoaded : NavigationEvent()
-
-    data object RouteFailed : NavigationEvent()
 
     data object InitializationComplete : NavigationEvent()
 

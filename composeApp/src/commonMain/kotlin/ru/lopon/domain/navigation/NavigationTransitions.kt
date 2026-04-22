@@ -13,12 +13,7 @@ object NavigationTransitions {
             is NavigationState.Initializing -> setOf(
                 NavigationEvent.BleConnected::class,
                 NavigationEvent.BleConnectionFailed::class,
-                NavigationEvent.BleNotRequired::class,
                 NavigationEvent.GpsAcquired::class,
-                NavigationEvent.GpsFailed::class,
-                NavigationEvent.GpsNotRequired::class,
-                NavigationEvent.RouteLoaded::class,
-                NavigationEvent.RouteFailed::class,
                 NavigationEvent.InitializationComplete::class,
                 NavigationEvent.AbortRequested::class,
                 NavigationEvent.ErrorOccurred::class

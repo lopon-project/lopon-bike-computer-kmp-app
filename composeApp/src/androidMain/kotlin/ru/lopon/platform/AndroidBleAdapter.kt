@@ -1,44 +1,20 @@
 package ru.lopon.platform
 
 import android.annotation.SuppressLint
-import android.bluetooth.BluetoothAdapter
-import android.bluetooth.BluetoothDevice
-import android.bluetooth.BluetoothGatt
-import android.bluetooth.BluetoothGattCallback
-import android.bluetooth.BluetoothGattCharacteristic
-import android.bluetooth.BluetoothGattDescriptor
-import android.bluetooth.BluetoothManager
-import android.bluetooth.BluetoothProfile
-import android.bluetooth.le.BluetoothLeScanner
-import android.bluetooth.le.ScanCallback
-import android.bluetooth.le.ScanFilter
-import android.bluetooth.le.ScanResult
-import android.bluetooth.le.ScanSettings
+import android.bluetooth.*
+import android.bluetooth.le.*
 import android.content.Context
 import android.os.Build
 import android.os.ParcelUuid
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.SupervisorJob
-import kotlinx.coroutines.cancel
+import androidx.core.content.edit
+import kotlinx.coroutines.*
 import kotlinx.coroutines.channels.awaitClose
-import kotlinx.coroutines.delay
-import kotlinx.coroutines.flow.Flow
-import kotlinx.coroutines.flow.MutableSharedFlow
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asSharedFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.callbackFlow
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withTimeoutOrNull
 import ru.lopon.domain.model.SensorReading
-import java.util.UUID
+import java.util.*
 import kotlin.coroutines.resume
-import androidx.core.content.edit
 
 
 @SuppressLint("MissingPermission")
@@ -235,16 +211,16 @@ class AndroidBleAdapter(
     }
 
     override suspend fun startSensor(): Result<Unit> {
-        return writeConfigCommand(LoponSensorProtocol.createStartCommand())
+        return writeConfigCommandFast(LoponSensorProtocol.createStartCommand())
     }
 
     override suspend fun stopSensor(): Result<Unit> {
-        return writeConfigCommand(LoponSensorProtocol.createStopCommand())
+        return writeConfigCommandFast(LoponSensorProtocol.createStopCommand())
     }
 
     private suspend fun stopSensorInternal() {
         try {
-            writeConfigCommand(LoponSensorProtocol.createStopCommand())
+            writeConfigCommandFast(LoponSensorProtocol.createStopCommand())
         } catch (e: Exception) {
         }
     }
@@ -274,9 +250,11 @@ class AndroidBleAdapter(
                         onError("Connection failed with status: $status")
                         gatt.close()
                     }
+
                     newState == BluetoothProfile.STATE_CONNECTED -> {
                         gatt.discoverServices()
                     }
+
                     newState == BluetoothProfile.STATE_DISCONNECTED -> {
                         onDisconnected()
                         gatt.close()
@@ -340,6 +318,7 @@ class AndroidBleAdapter(
                 )
                 reading?.let { _wheelDataFlow.tryEmit(it) }
             }
+
             configResponseUuid -> {
                 val response = LoponSensorProtocol.parseConfigResponse(value)
                 _configResponseFlow.tryEmit(response)
@@ -377,6 +356,39 @@ class AndroidBleAdapter(
         }
     }
 
+    private suspend fun writeConfigCommandFast(command: ByteArray): Result<Unit> {
+        val gatt = this.gatt ?: return Result.failure(Exception("Not connected"))
+        val characteristic = configWriteCharacteristic
+            ?: return Result.failure(Exception("Config characteristic not available"))
+
+        return try {
+            val writeResult = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                gatt.writeCharacteristic(
+                    characteristic,
+                    command,
+                    BluetoothGattCharacteristic.WRITE_TYPE_DEFAULT
+                )
+            } else {
+                @Suppress("DEPRECATION")
+                characteristic.value = command
+                @Suppress("DEPRECATION")
+                if (gatt.writeCharacteristic(characteristic)) {
+                    BluetoothGatt.GATT_SUCCESS
+                } else {
+                    BluetoothGatt.GATT_FAILURE
+                }
+            }
+
+            if (writeResult == BluetoothGatt.GATT_SUCCESS) {
+                Result.success(Unit)
+            } else {
+                Result.failure(Exception("Failed to write command"))
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
     private suspend fun writeConfigCommand(command: ByteArray): Result<Unit> {
         val gatt = this.gatt ?: return Result.failure(Exception("Not connected"))
         val characteristic = configWriteCharacteristic
@@ -401,19 +413,15 @@ class AndroidBleAdapter(
             }
 
             if (writeResult == BluetoothGatt.GATT_SUCCESS) {
-                val response = withTimeoutOrNull(2000) {
-                    var received: ConfigResponse? = null
-                    _configResponseFlow.collect {
-                        received = it
-                        return@collect
-                    }
-                    received
+                // Wait for response with short timeout (500ms) - don't block UI
+                val response = withTimeoutOrNull(500) {
+                    _configResponseFlow.first()
                 }
 
                 when (response) {
                     ConfigResponse.Success -> Result.success(Unit)
                     ConfigResponse.Error -> Result.failure(Exception("Sensor returned error"))
-                    else -> Result.success(Unit)
+                    else -> Result.success(Unit) // Timeout - assume success
                 }
             } else {
                 Result.failure(Exception("Failed to write command"))

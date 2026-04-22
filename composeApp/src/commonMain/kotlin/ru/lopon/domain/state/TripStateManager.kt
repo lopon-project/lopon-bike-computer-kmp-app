@@ -4,7 +4,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import ru.lopon.core.metrics.TripMetrics
+import ru.lopon.domain.model.GeoCoordinate
 import ru.lopon.domain.model.NavigationMode
+import ru.lopon.domain.model.Route
 import ru.lopon.domain.model.Trip
 
 
@@ -18,12 +20,13 @@ class TripStateManager {
         get() = _state.value
 
 
-    fun startTrip(trip: Trip, mode: NavigationMode): Boolean {
+    fun startTrip(trip: Trip, mode: NavigationMode, route: Route? = null): Boolean {
         return when (_state.value) {
             is TripState.Idle -> {
                 _state.value = TripState.Recording(
                     trip = trip,
                     mode = mode,
+                    route = route,
                     distanceMeters = 0.0,
                     elapsedMs = 0
                 )
@@ -40,9 +43,13 @@ class TripStateManager {
                 _state.value = TripState.Paused(
                     trip = current.trip,
                     mode = current.mode,
+                    route = current.route,
                     distanceMeters = current.distanceMeters,
                     elapsedMs = current.elapsedMs,
-                    metrics = current.metrics
+                    metrics = current.metrics,
+                    currentPosition = current.currentPosition,
+                    distanceToRouteEndM = current.distanceToRouteEndM,
+                    routeProgressPercent = current.routeProgressPercent
                 )
                 true
             }
@@ -57,9 +64,13 @@ class TripStateManager {
                 _state.value = TripState.Recording(
                     trip = current.trip,
                     mode = current.mode,
+                    route = current.route,
                     distanceMeters = current.distanceMeters,
                     elapsedMs = current.elapsedMs,
-                    metrics = current.metrics
+                    metrics = current.metrics,
+                    currentPosition = current.currentPosition,
+                    distanceToRouteEndM = current.distanceToRouteEndM,
+                    routeProgressPercent = current.routeProgressPercent
                 )
                 true
             }
@@ -123,6 +134,36 @@ class TripStateManager {
                     elapsedMs = metrics.elapsedTimeMs,
                     metrics = metrics
                 )
+                true
+            }
+
+            else -> false
+        }
+    }
+
+    fun updateSensorRouteProgress(
+        position: GeoCoordinate,
+        distanceToRouteEndM: Double,
+        routeProgressPercent: Double
+    ): Boolean {
+        return when (val current = _state.value) {
+            is TripState.Recording -> {
+                _state.value = current.copy(
+                    currentPosition = position,
+                    distanceToRouteEndM = distanceToRouteEndM,
+                    routeProgressPercent = routeProgressPercent
+                )
+                true
+            }
+
+            else -> false
+        }
+    }
+
+    fun updateGpsPosition(position: GeoCoordinate): Boolean {
+        return when (val current = _state.value) {
+            is TripState.Recording -> {
+                _state.value = current.copy(currentPosition = position)
                 true
             }
 

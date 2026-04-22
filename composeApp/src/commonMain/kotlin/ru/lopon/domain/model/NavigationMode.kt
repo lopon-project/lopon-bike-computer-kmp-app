@@ -14,3 +14,9 @@ sealed class NavigationMode {
     data object Gps : NavigationMode()
 }
 
+fun NavigationMode.displayName(): String = when (this) {
+    is NavigationMode.Sensor -> "Sensor"
+    is NavigationMode.Hybrid -> "Hybrid"
+    is NavigationMode.Gps -> "GPS"
+}
+

@@ -31,7 +31,9 @@ enum class RoutingProfile {
 
     MTB,
 
-    CITY_BIKE
+    CITY_BIKE,
+
+    FOOT_WALKING
 }
 @Serializable
 data class RoutingResult(
@@ -46,8 +48,6 @@ data class RoutingResult(
     val elevationLossMeters: Double? = null,
 
     val instructions: List<RoutingInstruction> = emptyList(),
-
-    val elevationProfile: List<ElevationPoint> = emptyList(),
 
     val source: RoutingServiceType = RoutingServiceType.ONLINE
 )
@@ -82,13 +82,6 @@ enum class InstructionType {
     WAYPOINT,
     UNKNOWN
 }
-
-@Serializable
-data class ElevationPoint(
-    val distanceMeters: Double,
-
-    val elevationMeters: Double
-)
 
 sealed class RoutingException(message: String) : Exception(message) {
     class PointNotFound(message: String) : RoutingException(message)
