@@ -1,7 +1,9 @@
 package ru.lopon.domain.state
 
 import ru.lopon.core.metrics.TripMetrics
+import ru.lopon.domain.model.GeoCoordinate
 import ru.lopon.domain.model.NavigationMode
+import ru.lopon.domain.model.Route
 import ru.lopon.domain.model.Trip
 
 sealed class TripState {
@@ -11,17 +13,25 @@ sealed class TripState {
     data class Recording(
         val trip: Trip,
         val mode: NavigationMode,
+        val route: Route? = null,
         val distanceMeters: Double = 0.0,
         val elapsedMs: Long = 0,
-        val metrics: TripMetrics = TripMetrics.ZERO
+        val metrics: TripMetrics = TripMetrics.ZERO,
+        val currentPosition: GeoCoordinate? = null,
+        val distanceToRouteEndM: Double? = null,
+        val routeProgressPercent: Double? = null
     ) : TripState()
 
     data class Paused(
         val trip: Trip,
         val mode: NavigationMode,
+        val route: Route? = null,
         val distanceMeters: Double,
         val elapsedMs: Long,
-        val metrics: TripMetrics = TripMetrics.ZERO
+        val metrics: TripMetrics = TripMetrics.ZERO,
+        val currentPosition: GeoCoordinate? = null,
+        val distanceToRouteEndM: Double? = null,
+        val routeProgressPercent: Double? = null
     ) : TripState()
 
     data class Finished(
@@ -29,4 +39,3 @@ sealed class TripState {
         val finalMetrics: TripMetrics = TripMetrics.ZERO
     ) : TripState()
 }
-

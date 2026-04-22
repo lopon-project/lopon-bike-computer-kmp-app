@@ -1,16 +1,17 @@
 package ru.lopon.core.metrics
 
+import kotlinx.coroutines.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
-import ru.lopon.core.TimeProvider
 import ru.lopon.core.RealTimeProvider
-import ru.lopon.core.settings.UnitConverter
-import ru.lopon.domain.processing.DataFusionProcessor
+import ru.lopon.core.TimeProvider
 
 class MetricsAggregator(
     private val movingSpeedThresholdMs: Double = 0.5,
-    private val timeProvider: TimeProvider = RealTimeProvider()
+    private val timeProvider: TimeProvider = RealTimeProvider(),
+    private val tickIntervalMs: Long = 1000L,
+    private val speedDecayTimeoutMs: Long = 2000L
 ) {
     private val speedCalculator = SpeedCalculator()
     private val cadenceCalculator = CadenceCalculator()
@@ -21,29 +22,57 @@ class MetricsAggregator(
     private var lastElevation: Double? = null
     private var elevationGainM: Double = 0.0
 
-    private val _metrics = MutableStateFlow(TripMetrics.ZERO)
+    // For speed decay when no sensor data
+    private var lastDataReceivedMs: Long = 0L
+    private var lastKnownSpeedMs: Double = 0.0
 
+    private val _metrics = MutableStateFlow(TripMetrics.ZERO)
     val metrics: StateFlow<TripMetrics> = _metrics.asStateFlow()
 
-    fun start() {
+    private var tickerJob: Job? = null
+    private var tickerScope: CoroutineScope? = null
+
+    fun start(scope: CoroutineScope? = null) {
         startTimeMs = timeProvider.currentTimeMillis()
+        lastDataReceivedMs = timeProvider.currentTimeMillis()
+
+        scope?.let {
+            tickerScope = it
+            startTicker(it)
+        }
     }
 
+    private fun startTicker(scope: CoroutineScope) {
+        tickerJob?.cancel()
+        tickerJob = scope.launch {
+            while (isActive) {
+                delay(tickIntervalMs)
+                tick()
+            }
+        }
+    }
 
-    fun processData(data: DataFusionProcessor.FusionResult, cadenceRpm: Double? = null) {
+    private fun tick() {
         if (startTimeMs == null) return
 
-        val speedMs = UnitConverter.kmhToMs(data.speedKmh)
+        val currentTime = timeProvider.currentTimeMillis()
+        val timeSinceLastData = currentTime - lastDataReceivedMs
 
-        val speed = speedCalculator.addSpeed(speedMs)
+        val currentSpeedMs = if (timeSinceLastData > speedDecayTimeoutMs) {
+            val decayFactor = 1.0 - ((timeSinceLastData - speedDecayTimeoutMs) / 3000.0).coerceIn(0.0, 1.0)
+            (lastKnownSpeedMs * decayFactor).coerceAtLeast(0.0)
+        } else {
+            lastKnownSpeedMs
+        }
 
-        val cadence = cadenceCalculator.addCadence(cadenceRpm)
+        movingTimeTracker.update(currentSpeedMs)
 
-        movingTimeTracker.update(speedMs)
-
-        emitMetrics(speed, cadence)
+        _metrics.value = _metrics.value.copy(
+            currentSpeedMs = currentSpeedMs,
+            movingTimeMs = movingTimeTracker.currentMovingTimeMs,
+            elapsedTimeMs = currentTime - (startTimeMs ?: currentTime)
+        )
     }
-
 
     fun processIncrement(
         distanceDeltaM: Double,
@@ -53,10 +82,11 @@ class MetricsAggregator(
     ) {
         if (startTimeMs == null) return
 
+        lastDataReceivedMs = timeProvider.currentTimeMillis()
+        lastKnownSpeedMs = speedMs
         totalDistanceM += distanceDeltaM
 
         val speed = speedCalculator.addSpeed(speedMs)
-
         val cadence = cadenceCalculator.addCadence(cadenceRpm)
 
         movingTimeTracker.update(speedMs)
@@ -71,11 +101,6 @@ class MetricsAggregator(
         }
 
         emitMetrics(speed, cadence)
-    }
-
-
-    fun addDistance(distanceDeltaM: Double) {
-        totalDistanceM += distanceDeltaM
     }
 
     private fun emitMetrics(speed: SmoothedSpeed, cadence: CadenceStats) {
@@ -102,14 +127,19 @@ class MetricsAggregator(
     }
 
     fun pause() {
+        tickerJob?.cancel()
         movingTimeTracker.pause()
     }
 
     fun resume() {
         movingTimeTracker.resume()
+        tickerScope?.let { startTicker(it) }
     }
 
     fun reset() {
+        tickerJob?.cancel()
+        tickerJob = null
+        tickerScope = null
         speedCalculator.reset()
         cadenceCalculator.reset()
         movingTimeTracker.reset()
@@ -117,11 +147,12 @@ class MetricsAggregator(
         startTimeMs = null
         lastElevation = null
         elevationGainM = 0.0
+        lastDataReceivedMs = 0L
+        lastKnownSpeedMs = 0.0
         _metrics.value = TripMetrics.ZERO
     }
 
     val currentMetrics: TripMetrics get() = _metrics.value
-
     val totalDistance: Double get() = totalDistanceM
 }
 

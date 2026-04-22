@@ -8,9 +8,11 @@ import ru.lopon.core.DistanceCalculator
 import ru.lopon.core.IdGenerator
 import ru.lopon.core.TimeProvider
 import ru.lopon.core.metrics.MetricsAggregator
+import ru.lopon.domain.model.GeoCoordinate
 import ru.lopon.domain.model.NavigationMode
-import ru.lopon.domain.model.TrackPoint
+import ru.lopon.domain.model.Route
 import ru.lopon.domain.model.Trip
+import ru.lopon.domain.processing.SensorModePositionCalculator
 import ru.lopon.domain.repository.LocationRepository
 import ru.lopon.domain.repository.SensorRepository
 import ru.lopon.domain.state.TripState
@@ -32,10 +34,23 @@ class StartTripUseCase(
 
     private var processSensorDataUseCase: ProcessSensorDataUseCase? = null
     private var processLocationDataUseCase: ProcessLocationDataUseCase? = null
+    private var sensorModePositionCalculator: SensorModePositionCalculator? = null
 
-    suspend operator fun invoke(mode: NavigationMode, scope: CoroutineScope): Result<Trip> {
+    suspend operator fun invoke(
+        mode: NavigationMode,
+        scope: CoroutineScope,
+        route: Route? = null
+    ): Result<Trip> {
+        if (stateManager.currentState is TripState.Finished) {
+            stateManager.reset()
+        }
+
         if (stateManager.currentState !is TripState.Idle) {
             return Result.failure(IllegalStateException("Cannot start trip: trip already active"))
+        }
+
+        if (mode is NavigationMode.Sensor && (route == null || !route.isValid)) {
+            return Result.failure(IllegalArgumentException("Sensor mode requires a valid route"))
         }
 
         val initResult = initializeDataSources(mode, scope)
@@ -46,12 +61,13 @@ class StartTripUseCase(
         val trip = Trip(
             id = idGenerator.generateId(),
             startTimeUtc = timeProvider.currentTimeMillis(),
-            mode = mode
+            mode = mode,
+            routeId = route?.id
         )
 
 
         metricsAggregator?.reset()
-        metricsAggregator?.start()
+        metricsAggregator?.start(scope)
 
         metricsAggregator?.let { aggregator ->
             processSensorDataUseCase = ProcessSensorDataUseCase(
@@ -65,10 +81,16 @@ class StartTripUseCase(
             )
         }
 
+        sensorModePositionCalculator = if (mode is NavigationMode.Sensor && route != null) {
+            SensorModePositionCalculator(route)
+        } else {
+            null
+        }
+
         subscribeMetrics(scope)
 
 
-        val started = stateManager.startTrip(trip, mode)
+        val started = stateManager.startTrip(trip, mode, route)
         if (!started) {
             cancelDataSources()
             metricsAggregator?.reset()
@@ -86,12 +108,14 @@ class StartTripUseCase(
                     sensorRepository.startScanning().getOrThrow()
                     subscribeSensorData(scope)
                 }
+
                 is NavigationMode.Hybrid -> {
                     sensorRepository.startScanning().getOrThrow()
                     locationRepository.startTracking().getOrThrow()
                     subscribeSensorData(scope)
                     subscribeLocationData(scope)
                 }
+
                 is NavigationMode.Gps -> {
                     locationRepository.startTracking().getOrThrow()
                     subscribeLocationData(scope)
@@ -108,7 +132,17 @@ class StartTripUseCase(
     private fun subscribeSensorData(scope: CoroutineScope) {
         sensorJob = sensorRepository.observeReadings()
             .onEach { reading ->
-                processSensorDataUseCase?.invoke(reading)
+                val result = processSensorDataUseCase?.invoke(reading)?.getOrNull()
+                val processed = result as? SensorProcessingResult.Processed ?: return@onEach
+
+                val positionResult = sensorModePositionCalculator?.addDistance(processed.distanceDeltaM)
+                positionResult?.let {
+                    stateManager.updateSensorRouteProgress(
+                        position = it.position,
+                        distanceToRouteEndM = it.distanceToEndMeters,
+                        routeProgressPercent = it.progressPercent
+                    )
+                }
             }
             .launchIn(scope)
     }
@@ -117,7 +151,20 @@ class StartTripUseCase(
     private fun subscribeLocationData(scope: CoroutineScope) {
         locationJob = locationRepository.observeLocation()
             .onEach { trackPoint ->
-                processLocationDataUseCase?.invoke(trackPoint)
+                when (val result = processLocationDataUseCase?.invoke(trackPoint)?.getOrNull()) {
+                    is LocationProcessingResult.FirstReading -> {
+                        val lon = trackPoint.longitude
+                        if (lon != null) {
+                            stateManager.updateGpsPosition(GeoCoordinate(trackPoint.latitude, lon))
+                        }
+                    }
+
+                    is LocationProcessingResult.Processed -> {
+                        stateManager.updateGpsPosition(result.position)
+                    }
+
+                    else -> {}
+                }
             }
             .launchIn(scope)
     }
@@ -143,6 +190,7 @@ class StartTripUseCase(
 
         processSensorDataUseCase?.reset()
         processLocationDataUseCase?.reset()
+        sensorModePositionCalculator = null
     }
 
     // Для будущих тестов
@@ -152,4 +200,3 @@ class StartTripUseCase(
     internal val activeLocationJob: Job?
         get() = locationJob
 }
-

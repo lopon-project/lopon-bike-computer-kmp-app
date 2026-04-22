@@ -3,6 +3,7 @@ package ru.lopon.domain.repository
 import kotlinx.coroutines.flow.Flow
 import ru.lopon.domain.model.NavigationMode
 import ru.lopon.domain.model.Settings
+import ru.lopon.domain.model.ThemeMode
 import ru.lopon.domain.model.UnitSystem
 
 interface SettingsRepository {
@@ -21,7 +22,11 @@ interface SettingsRepository {
 
     suspend fun updateAutoConnectBle(enabled: Boolean): Result<Unit>
 
+    suspend fun updateThemeMode(mode: ThemeMode): Result<Unit>
+
     suspend fun saveLastBleDevice(deviceId: String, deviceName: String?): Result<Unit>
 
     suspend fun clearLastBleDevice(): Result<Unit>
+
+    suspend fun loadFromFile(): Result<Settings>
 }

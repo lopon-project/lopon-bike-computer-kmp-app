@@ -8,6 +8,7 @@ import ru.lopon.core.settings.ValidationResult
 import ru.lopon.core.settings.WheelCircumferenceValidator
 import ru.lopon.domain.model.NavigationMode
 import ru.lopon.domain.model.Settings
+import ru.lopon.domain.model.ThemeMode
 import ru.lopon.domain.model.UnitSystem
 import ru.lopon.domain.repository.SettingsRepository
 import ru.lopon.platform.FileStorage
@@ -56,6 +57,10 @@ class SettingsRepositoryImpl(
         return updateSettings(_settings.value.copy(autoConnectBle = enabled))
     }
 
+    override suspend fun updateThemeMode(mode: ThemeMode): Result<Unit> {
+        return updateSettings(_settings.value.copy(themeMode = mode))
+    }
+
     override suspend fun saveLastBleDevice(deviceId: String, deviceName: String?): Result<Unit> {
         return updateSettings(_settings.value.copy(
             lastBleDeviceId = deviceId,
@@ -79,7 +84,7 @@ class SettingsRepositoryImpl(
         }
     }
 
-    suspend fun loadFromFile(): Result<Settings> {
+    override suspend fun loadFromFile(): Result<Settings> {
         return fileStorage.readText(settingsPath)
             .mapCatching { content ->
                 json.decodeFromString(Settings.serializer(), content)

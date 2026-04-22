@@ -89,6 +89,8 @@ object MetricsFormatter {
         return "${formatElevationGain(elevationGainM)} м"
     }
 
+    fun formatDecimal(value: Double, decimals: Int): String = formatDouble(value, decimals)
+
     private fun formatDouble(value: Double, decimals: Int): String {
         if (decimals <= 0) {
             return value.roundToInt().toString()

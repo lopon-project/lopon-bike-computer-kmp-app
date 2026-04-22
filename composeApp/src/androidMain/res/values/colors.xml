@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Brand colors for launcher icon and system UI -->
+    <color name="ic_launcher_background">#FFD400</color>
+    <color name="brand_black">#FF111111</color>
+    <color name="brand_yellow">#FFFFD400</color>
+    <color name="brand_yellow_dark">#FFE5BE00</color>
+    <color name="status_bar_color">#FF111111</color>
+</resources>

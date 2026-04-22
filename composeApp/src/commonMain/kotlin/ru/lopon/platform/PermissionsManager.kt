@@ -5,6 +5,8 @@ interface PermissionsManager {
     fun checkPermission(permission: AppPermission): PermissionState
 
     suspend fun requestPermission(permission: AppPermission): PermissionState
+
+    fun isBluetoothEnabled(): Boolean
 }
 
 
@@ -13,7 +15,9 @@ enum class AppPermission {
 
     BLUETOOTH,
 
-    FILE_ACCESS
+    FILE_ACCESS,
+
+    NOTIFICATION
 }
 
 

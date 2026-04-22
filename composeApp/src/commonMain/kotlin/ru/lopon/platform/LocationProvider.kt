@@ -20,6 +20,7 @@ data class LocationData(
     val accuracy: Float?,
     val altitude: Double?,
     val speed: Float?,
+    val bearing: Float?,
     val timestampUtc: Long
 )
 
