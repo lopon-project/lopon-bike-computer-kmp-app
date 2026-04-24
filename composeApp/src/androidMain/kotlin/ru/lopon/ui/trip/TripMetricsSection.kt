@@ -222,6 +222,98 @@ private fun VerticalStopButton(onClick: () -> Unit) {
 }
 
 @Composable
+internal fun CompactMetricsRow(
+    metrics: TripMetrics,
+    isRecording: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceEvenly,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        CompactMetricItem(
+            label = "Скорость",
+            value = MetricsFormatter.formatSpeedKmh(metrics.currentSpeedMs),
+            unit = "км/ч",
+            highlight = isRecording
+        )
+
+        Box(
+            modifier = Modifier
+                .width(1.dp)
+                .height(36.dp)
+                .background(LoponColors.divider)
+        )
+
+        CompactMetricItem(
+            label = "Дистанция",
+            value = MetricsFormatter.formatDistanceKm(metrics.totalDistanceM),
+            unit = "км"
+        )
+
+        Box(
+            modifier = Modifier
+                .width(1.dp)
+                .height(36.dp)
+                .background(LoponColors.divider)
+        )
+
+        CompactMetricItem(
+            label = "Время",
+            value = MetricsFormatter.formatTimeCompact(metrics.movingTimeMs),
+            unit = ""
+        )
+    }
+}
+
+
+@Composable
+internal fun SecondaryMetricsGrid(
+    metrics: TripMetrics,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(LoponDimens.spacerSmall)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(LoponDimens.spacerSmall)
+        ) {
+            MetricCard(
+                modifier = Modifier.weight(1f),
+                label = "Средняя скорость",
+                value = MetricsFormatter.formatSpeedKmh(metrics.averageSpeedMs),
+                unit = "км/ч"
+            )
+            MetricCard(
+                modifier = Modifier.weight(1f),
+                label = "Макс. скорость",
+                value = MetricsFormatter.formatSpeedKmh(metrics.maxSpeedMs),
+                unit = "км/ч"
+            )
+        }
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(LoponDimens.spacerSmall)
+        ) {
+            MetricCard(
+                modifier = Modifier.weight(1f),
+                label = "Общее время",
+                value = MetricsFormatter.formatTimeCompact(metrics.elapsedTimeMs)
+            )
+            MetricCard(
+                modifier = Modifier.weight(1f),
+                label = "Набор высоты",
+                value = MetricsFormatter.formatElevationGain(metrics.elevationGainM),
+                unit = "м"
+            )
+        }
+    }
+}
+
+@Composable
 internal fun CompactTripBar(
     metrics: TripMetrics,
     isRecording: Boolean,
@@ -239,44 +331,7 @@ internal fun CompactTripBar(
             .padding(horizontal = LoponDimens.screenPadding, vertical = LoponDimens.spacerSmall),
         verticalArrangement = Arrangement.spacedBy(LoponDimens.spacerSmall)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceEvenly,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            CompactMetricItem(
-                label = "Скорость",
-                value = MetricsFormatter.formatSpeedKmh(metrics.currentSpeedMs),
-                unit = "км/ч",
-                highlight = isRecording
-            )
-
-            Box(
-                modifier = Modifier
-                    .width(1.dp)
-                    .height(36.dp)
-                    .background(LoponColors.divider)
-            )
-
-            CompactMetricItem(
-                label = "Дистанция",
-                value = MetricsFormatter.formatDistanceKm(metrics.totalDistanceM),
-                unit = "км"
-            )
-
-            Box(
-                modifier = Modifier
-                    .width(1.dp)
-                    .height(36.dp)
-                    .background(LoponColors.divider)
-            )
-
-            CompactMetricItem(
-                label = "Время",
-                value = MetricsFormatter.formatTimeCompact(metrics.movingTimeMs),
-                unit = ""
-            )
-        }
+        CompactMetricsRow(metrics = metrics, isRecording = isRecording)
 
         TripControlButtons(
             tripState = tripState,

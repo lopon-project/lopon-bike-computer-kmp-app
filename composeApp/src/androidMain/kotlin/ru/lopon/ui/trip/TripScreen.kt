@@ -196,16 +196,13 @@ fun TripScreen(
                         ),
                     verticalArrangement = Arrangement.spacedBy(LoponDimens.spacerSmall)
                 ) {
-                    CompactTripBar(
+                    CompactMetricsRow(
                         metrics = uiState.metrics,
                         isRecording = uiState.isRecording,
-                        tripState = uiState.tripState,
-                        onStartClick = { viewModel.openStartWizard() },
-                        onStopClick = { viewModel.stopTrip() },
-                        onPauseClick = { viewModel.pauseTrip() },
-                        onResumeClick = { viewModel.resumeTrip() },
-                        compactVerticalControls = true
+                        modifier = Modifier.padding(vertical = LoponDimens.spacerSmall)
                     )
+
+                    SecondaryMetricsGrid(metrics = uiState.metrics)
 
                     val routeProgressPercent = uiState.routeProgressPercent
                     val distanceToRouteEndM = uiState.distanceToRouteEndM
@@ -215,6 +212,15 @@ fun TripScreen(
                             distanceToEndM = distanceToRouteEndM
                         )
                     }
+
+                    TripControlButtons(
+                        tripState = uiState.tripState,
+                        onStartClick = { viewModel.openStartWizard() },
+                        onStopClick = { viewModel.stopTrip() },
+                        onPauseClick = { viewModel.pauseTrip() },
+                        onResumeClick = { viewModel.resumeTrip() },
+                        verticalStack = true
+                    )
 
                     uiState.errorMessage?.let { error ->
                         ErrorCard(message = error, onDismiss = { viewModel.clearError() })
