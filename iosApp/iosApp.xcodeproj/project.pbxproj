@@ -36,11 +36,16 @@
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
+/* Begin PBXBuildFile section */
+		AA00000000000000000000A1 /* MapLibre in Frameworks */ = {isa = PBXBuildFile; productRef = AA00000000000000000000A2 /* MapLibre */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXFrameworksBuildPhase section */
 		BA6150FEEC28D81BD283BB5E /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				AA00000000000000000000A1 /* MapLibre in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -85,6 +90,7 @@
 			);
 			name = iosApp;
 			packageProductDependencies = (
+				AA00000000000000000000A2 /* MapLibre */,
 			);
 			productName = iosApp;
 			productReference = 2129C3A8112405C90475103F /* lopon.app */;
@@ -114,6 +120,9 @@
 			);
 			mainGroup = 25EBEF830B35143A40423B11;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				AA00000000000000000000A3 /* XCRemoteSwiftPackageReference "maplibre-gl-native-distribution" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = E2873295AA94C058D466DB7C /* Products */;
 			projectDirPath = "";
@@ -123,6 +132,25 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		AA00000000000000000000A3 /* XCRemoteSwiftPackageReference "maplibre-gl-native-distribution" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/maplibre/maplibre-gl-native-distribution.git";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 6.0.0;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		AA00000000000000000000A2 /* MapLibre */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = AA00000000000000000000A3 /* XCRemoteSwiftPackageReference "maplibre-gl-native-distribution" */;
+			productName = MapLibre;
+		};
+/* End XCSwiftPackageProductDependency section */
 
 /* Begin PBXResourcesBuildPhase section */
 		57D869A9E54F5263D06D7F20 /* Resources */ = {

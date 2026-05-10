@@ -23,6 +23,8 @@ kotlin {
         iosTarget.binaries.framework {
             baseName = "ComposeApp"
             isStatic = true
+            export(libs.kotlinx.coroutines.core)
+            transitiveExport = false
         }
     }
 
@@ -37,6 +39,7 @@ kotlin {
         }
         iosMain.dependencies {
             implementation(libs.ktor.client.darwin)
+            api(libs.kotlinx.coroutines.core)
         }
         commonMain.dependencies {
             implementation(libs.runtime)
