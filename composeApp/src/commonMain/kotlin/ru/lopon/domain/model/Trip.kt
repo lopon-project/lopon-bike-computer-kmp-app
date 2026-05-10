@@ -14,7 +14,8 @@ data class Trip(
     val maxSpeedMs: Double? = null,
     val averageCadenceRpm: Double? = null,
     val elevationGainM: Double? = null,
-    val routeId: String? = null
+    val routeId: String? = null,
+    val trackPoints: List<TrackPoint> = emptyList()
 ) {
     val isFinished: Boolean
         get() = endTimeUtc != null
@@ -24,4 +25,3 @@ data class Trip(
         return (end - startTimeUtc).coerceAtLeast(0)
     }
 }
-
