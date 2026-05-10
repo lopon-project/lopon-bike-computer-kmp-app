@@ -10,7 +10,13 @@ struct TripSummaryView: View {
                 VStack(spacing: 16) {
                     headerCard
                     metricsGrid
-                    actions
+                    if !elevationPoints.isEmpty {
+                        ElevationProfileChart(points: elevationPoints)
+                            .padding(.vertical, 4)
+                    }
+                    LoponButton(title: "Экспорт в GPX", systemImage: "square.and.arrow.up") {
+                        holder.trip.exportSummaryGpx()
+                    }
                 }
                 .padding()
             }
@@ -21,6 +27,39 @@ struct TripSummaryView: View {
                 }
             }
         }
+    }
+
+    private var elevationPoints: [ElevationPoint] {
+        let pts = holder.trip.state.recordedTrackPointsFull
+        guard pts.count >= 2 else { return [] }
+        var result: [ElevationPoint] = []
+        var distanceM: Double = 0.0
+        var prevLat: Double? = nil
+        var prevLon: Double? = nil
+        for tp in pts {
+            guard let lon = tp.longitude?.doubleValue else { continue }
+            if let pLat = prevLat, let pLon = prevLon {
+                distanceM += haversine(prevLat: pLat, prevLon: pLon, lat: tp.latitude, lon: lon)
+            }
+            prevLat = tp.latitude
+            prevLon = lon
+            if let e = tp.elevation?.doubleValue {
+                result.append(ElevationPoint(distanceKm: distanceM / 1000.0, elevationM: e))
+            }
+        }
+        return result
+    }
+
+    private func haversine(prevLat: Double, prevLon: Double, lat: Double, lon: Double) -> Double {
+        let r = 6371000.0
+        let toRad = Double.pi / 180.0
+        let dLat = (lat - prevLat) * toRad
+        let dLon = (lon - prevLon) * toRad
+        let a = sin(dLat / 2) * sin(dLat / 2) +
+                cos(prevLat * toRad) * cos(lat * toRad) *
+                sin(dLon / 2) * sin(dLon / 2)
+        let c = 2 * atan2(sqrt(a), sqrt(1 - a))
+        return r * c
     }
 
     private var headerCard: some View {
@@ -58,15 +97,6 @@ struct TripSummaryView: View {
                        value: String(format: "%.1f", metrics?.maxSpeedKmh ?? 0),
                        unit: "км/ч",
                        systemImage: "bolt")
-        }
-    }
-
-    private var actions: some View {
-        VStack(spacing: 8) {
-            Text("Поездка сохранена в истории. Откройте её там, чтобы экспортировать GPX.")
-                .font(.caption)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
         }
     }
 

@@ -209,6 +209,8 @@ class IosBleAdapter : BleAdapter {
         scope.cancel()
     }
 
+    fun getLastConnectedDeviceId(): String? = prefs.getString(IosPrefs.KEY_LAST_BLE_DEVICE_ID)
+
     private fun isPoweredOn(): Boolean = central.state == CBManagerStatePoweredOn
 
     private fun writeConfigCommandFast(command: ByteArray): Result<Unit> {

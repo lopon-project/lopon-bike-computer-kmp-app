@@ -150,20 +150,26 @@ class TripViewModel(
                         longitude = locationData.longitude,
                         bearing = locationData.bearing
                     )
+                    val newPoint = ru.lopon.domain.model.TrackPoint(
+                        latitude = locationData.latitude,
+                        longitude = locationData.longitude,
+                        timestampUtc = locationData.timestampUtc,
+                        source = ru.lopon.domain.model.TrackPoint.SOURCE_GPS,
+                        elevation = locationData.altitude,
+                        speed = locationData.speed?.toDouble()
+                    )
                     _uiState.update { state ->
-                        val updatedTrack = if (state.isRecording) {
-                            val activeRoute = when (val ts = state.tripState) {
-                                is TripState.Recording -> ts.route
-                                else -> null
-                            }
-                            if (activeRoute == null) {
-                                state.recordedTrackPoints + newCoord
-                            } else state.recordedTrackPoints
+                        val updatedCoords = if (state.isRecording) {
+                            state.recordedTrackPoints + newCoord
                         } else state.recordedTrackPoints
+                        val updatedPoints = if (state.isRecording) {
+                            state.recordedTrackPointsFull + newPoint
+                        } else state.recordedTrackPointsFull
 
                         state.copy(
                             lastKnownLocation = newCoord,
-                            recordedTrackPoints = updatedTrack
+                            recordedTrackPoints = updatedCoords,
+                            recordedTrackPointsFull = updatedPoints
                         )
                     }
                 }
@@ -329,15 +335,22 @@ class TripViewModel(
                 NavigationMode.Gps -> "GPS"
                 NavigationMode.Hybrid -> "Hybrid"
             }
+            val capturedTrack = _uiState.value.recordedTrackPointsFull
 
             val result = stopTripUseCase()
 
-            result.onSuccess {
+            result.onSuccess { savedTrip ->
+                if (capturedTrack.isNotEmpty()) {
+                    container.tripRepository.saveTrip(
+                        savedTrip.copy(trackPoints = capturedTrack)
+                    )
+                }
                 _uiState.update {
                     it.copy(
                         showTripSummary = true,
                         summaryMetrics = finalMetrics,
-                        summaryModeName = modeName
+                        summaryModeName = modeName,
+                        summaryTripId = savedTrip.id
                     )
                 }
                 tripStateManager.reset()
@@ -354,8 +367,45 @@ class TripViewModel(
                 showTripSummary = false,
                 summaryMetrics = null,
                 summaryModeName = "",
-                recordedTrackPoints = emptyList()
+                summaryTripId = null,
+                recordedTrackPoints = emptyList(),
+                recordedTrackPointsFull = emptyList()
             )
+        }
+    }
+
+    fun exportSummaryGpx() {
+        val tripId = _uiState.value.summaryTripId ?: return
+        viewModelScope.launch {
+            val trip = container.tripRepository.getTrip(tripId) ?: return@launch
+            val outputPath = "exports/trip_${tripId}.gpx"
+            val res = container.exportGpxUseCase(
+                tripId = tripId,
+                trackPoints = trip.trackPoints,
+                outputPath = outputPath
+            )
+            res.onSuccess {
+                container.fileStorage.presentShareSheet(outputPath)
+            }.onFailure { error ->
+                _uiState.update { it.copy(errorMessage = "Ошибка экспорта: ${error.message}") }
+            }
+        }
+    }
+
+    fun exportTripGpx(tripId: String) {
+        viewModelScope.launch {
+            val trip = container.tripRepository.getTrip(tripId) ?: return@launch
+            val outputPath = "exports/trip_${tripId}.gpx"
+            val res = container.exportGpxUseCase(
+                tripId = tripId,
+                trackPoints = trip.trackPoints,
+                outputPath = outputPath
+            )
+            res.onSuccess {
+                container.fileStorage.presentShareSheet(outputPath)
+            }.onFailure { error ->
+                _uiState.update { it.copy(errorMessage = "Ошибка экспорта: ${error.message}") }
+            }
         }
     }
 
@@ -415,5 +465,7 @@ data class TripUiState(
     val showTripSummary: Boolean = false,
     val summaryMetrics: TripMetrics? = null,
     val summaryModeName: String = "",
-    val recordedTrackPoints: List<GeoCoordinate> = emptyList()
+    val summaryTripId: String? = null,
+    val recordedTrackPoints: List<GeoCoordinate> = emptyList(),
+    val recordedTrackPointsFull: List<ru.lopon.domain.model.TrackPoint> = emptyList()
 )

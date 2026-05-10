@@ -64,6 +64,20 @@ class SensorTestViewModel(
         _uiState.update { it.copy(logEntries = emptyList()) }
     }
 
+    fun exportLogText(): String {
+        val entries = _uiState.value.logEntries
+        return entries.joinToString(separator = "\n") { entry ->
+            val type = when (entry.type) {
+                LogEntryType.CONNECTION -> "CONN"
+                LogEntryType.SENSOR_DATA -> "DATA"
+                LogEntryType.CONFIG -> "CONF"
+                LogEntryType.ERROR -> "ERR "
+                LogEntryType.INFO -> "INFO"
+            }
+            "[${entry.timestamp}] $type ${entry.message}"
+        }
+    }
+
     private fun setError(message: String) {
         _uiState.update { it.copy(errorMessage = message) }
         appendLog(LogEntryType.ERROR, message)

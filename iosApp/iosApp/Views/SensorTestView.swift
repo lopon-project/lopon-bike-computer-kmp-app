@@ -80,6 +80,13 @@ struct SensorTestView: View {
             HStack {
                 Text("Журнал событий").font(.headline)
                 Spacer()
+                Button {
+                    Task { await holder.sensorTest.exportLog() }
+                } label: {
+                    Label("Экспорт", systemImage: "square.and.arrow.up")
+                }
+                .font(.caption)
+                .disabled(holder.sensorTest.state.logEntries.isEmpty)
                 Button("Очистить") { holder.sensorTest.clearLog() }
                     .font(.caption)
             }

@@ -94,9 +94,21 @@ struct RouteWizardView: View {
                         Spacer()
                         Label(formatSeconds(details.durationSeconds),
                               systemImage: "clock")
+                        Spacer()
+                        if let gain = details.elevationGainMeters?.doubleValue, gain > 0 {
+                            Label(String(format: "↑ %.0f м", gain),
+                                  systemImage: "arrow.up.right")
+                        }
                     }
                     .font(.caption)
                     .foregroundStyle(.secondary)
+
+                    if let elev = synthElevation(for: holder.routeWizard.state.calculatedRoute,
+                                                 totalGain: details.elevationGainMeters?.doubleValue ?? 0,
+                                                 totalLoss: details.elevationLossMeters?.doubleValue ?? 0),
+                       elev.count >= 2 {
+                        ElevationProfileChart(points: elev, height: 100)
+                    }
                 }
 
                 HStack(spacing: 8) {
@@ -212,5 +224,46 @@ struct RouteWizardView: View {
         let m = (total % 3600) / 60
         if h > 0 { return "\(h) ч \(m) мин" }
         return "\(m) мин"
+    }
+
+    private func synthElevation(for route: Route?, totalGain: Double, totalLoss: Double) -> [ElevationPoint]? {
+        guard let route = route, route.points.count >= 2 else { return nil }
+        guard totalGain > 0 || totalLoss > 0 else { return nil }
+        let coords = route.points.map {
+            CLLocationCoordinate2D(latitude: $0.latitude, longitude: $0.longitude)
+        }
+        var distancesKm: [Double] = [0.0]
+        var total = 0.0
+        for i in 1..<coords.count {
+            total += haversine(prevLat: coords[i - 1].latitude, prevLon: coords[i - 1].longitude,
+                               lat: coords[i].latitude, lon: coords[i].longitude) / 1000.0
+            distancesKm.append(total)
+        }
+        let baseElevation: Double = 100
+        let n = coords.count
+        let half = max(1, n / 2)
+        var elev: [Double] = []
+        for i in 0..<n {
+            let v: Double
+            if i <= half {
+                v = baseElevation + (totalGain * Double(i)) / Double(half)
+            } else {
+                v = baseElevation + totalGain - (totalLoss * Double(i - half)) / Double(n - half)
+            }
+            elev.append(v)
+        }
+        return zip(distancesKm, elev).map { ElevationPoint(distanceKm: $0.0, elevationM: $0.1) }
+    }
+
+    private func haversine(prevLat: Double, prevLon: Double, lat: Double, lon: Double) -> Double {
+        let r = 6371000.0
+        let toRad = Double.pi / 180.0
+        let dLat = (lat - prevLat) * toRad
+        let dLon = (lon - prevLon) * toRad
+        let a = sin(dLat / 2) * sin(dLat / 2) +
+                cos(prevLat * toRad) * cos(lat * toRad) *
+                sin(dLon / 2) * sin(dLon / 2)
+        let c = 2 * atan2(sqrt(a), sqrt(1 - a))
+        return r * c
     }
 }

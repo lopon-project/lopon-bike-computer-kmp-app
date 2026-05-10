@@ -3,16 +3,73 @@ import ComposeApp
 
 struct HistoryDetailView: View {
     let trip: Trip
+    @EnvironmentObject var holder: AppContainerHolder
 
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
+                if !trackCoords.isEmpty {
+                    MapLibreMapView(
+                        initialCenter: trackCoords.first ?? CLLocationCoordinate2D(latitude: 55.7558, longitude: 37.6173),
+                        initialZoom: 13,
+                        recordedTrackPoints: trackCoords
+                    )
+                    .frame(height: 220)
+                    .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                }
                 infoCard
                 metricsGrid
+                if !elevationPoints.isEmpty {
+                    ElevationProfileChart(points: elevationPoints)
+                        .padding(.vertical, 8)
+                }
+                LoponButton(title: "Экспорт в GPX", systemImage: "square.and.arrow.up") {
+                    holder.trip.exportTripGpx(trip.id)
+                }
             }
             .padding()
         }
         .navigationTitle("Детали поездки")
+    }
+
+    private var trackCoords: [CLLocationCoordinate2D] {
+        trip.trackPoints.compactMap { tp in
+            guard let lon = tp.longitude?.doubleValue else { return nil }
+            return CLLocationCoordinate2D(latitude: tp.latitude, longitude: lon)
+        }
+    }
+
+    private var elevationPoints: [ElevationPoint] {
+        let pts = trip.trackPoints
+        guard pts.count >= 2 else { return [] }
+        var result: [ElevationPoint] = []
+        var distanceM: Double = 0.0
+        var prevLat: Double? = nil
+        var prevLon: Double? = nil
+        for tp in pts {
+            guard let lon = tp.longitude?.doubleValue else { continue }
+            if let pLat = prevLat, let pLon = prevLon {
+                distanceM += haversine(prevLat: pLat, prevLon: pLon, lat: tp.latitude, lon: lon)
+            }
+            prevLat = tp.latitude
+            prevLon = lon
+            if let e = tp.elevation?.doubleValue {
+                result.append(ElevationPoint(distanceKm: distanceM / 1000.0, elevationM: e))
+            }
+        }
+        return result
+    }
+
+    private func haversine(prevLat: Double, prevLon: Double, lat: Double, lon: Double) -> Double {
+        let r = 6371000.0
+        let toRad = Double.pi / 180.0
+        let dLat = (lat - prevLat) * toRad
+        let dLon = (lon - prevLon) * toRad
+        let a = sin(dLat / 2) * sin(dLat / 2) +
+                cos(prevLat * toRad) * cos(lat * toRad) *
+                sin(dLon / 2) * sin(dLon / 2)
+        let c = 2 * atan2(sqrt(a), sqrt(1 - a))
+        return r * c
     }
 
     private var infoCard: some View {

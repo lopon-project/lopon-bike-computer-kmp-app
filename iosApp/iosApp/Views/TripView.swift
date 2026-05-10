@@ -37,6 +37,20 @@ struct TripView: View {
                 holder.trip.closeStartWizard()
             }
         }
+        .onChange(of: holder.trip.state.isRecording) { _, recording in
+            updateIdleTimer(recording: recording)
+        }
+        .onAppear {
+            updateIdleTimer(recording: holder.trip.state.isRecording)
+        }
+        .onDisappear {
+            UIApplication.shared.isIdleTimerDisabled = false
+        }
+    }
+
+    private func updateIdleTimer(recording: Bool) {
+        let keepOn = holder.settings.state.settings.keepScreenOn
+        UIApplication.shared.isIdleTimerDisabled = recording && keepOn
     }
 
     private var mapLayer: some View {

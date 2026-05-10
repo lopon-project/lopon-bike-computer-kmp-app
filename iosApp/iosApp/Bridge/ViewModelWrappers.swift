@@ -81,10 +81,12 @@ final class SensorTestViewModelObservable: ObservableObject {
     @Published private(set) var state: SensorTestUiState
 
     private let vm: SensorTestViewModel
+    private let fileStorage: IosFileStorage
     private var stateJob: FlowJob?
 
-    init(_ vm: SensorTestViewModel) {
+    init(_ vm: SensorTestViewModel, fileStorage: IosFileStorage) {
         self.vm = vm
+        self.fileStorage = fileStorage
         self.state = vm.uiState.value as! SensorTestUiState
         self.stateJob = observe(vm.uiState) { [weak self] (s: SensorTestUiState) in
             self?.state = s
@@ -103,6 +105,16 @@ final class SensorTestViewModelObservable: ObservableObject {
     func startSensor() async { try? await vm.startSensor() }
     func stopSensor() async { try? await vm.stopSensor() }
     func requestPermissions() async { try? await vm.requestPermissions() }
+
+    func exportLog() async {
+        let text = vm.exportLogText()
+        if text.isEmpty { return }
+        let path = "exports/sensor_log_\(Int(Date().timeIntervalSince1970)).txt"
+        let res = try? await fileStorage.writeText(path: path, content: text)
+        if (res?.isSuccess ?? false) == true {
+            fileStorage.presentShareSheet(path: path)
+        }
+    }
 }
 
 @MainActor
@@ -161,6 +173,8 @@ final class TripViewModelObservable: ObservableObject {
     func resumeTrip() { vm.resumeTrip() }
     func clearError() { vm.clearError() }
     func createQuickRoute() { vm.createQuickRoute() }
+    func exportSummaryGpx() { vm.exportSummaryGpx() }
+    func exportTripGpx(_ tripId: String) { vm.exportTripGpx(tripId: tripId) }
 }
 
 @MainActor
