@@ -42,11 +42,7 @@ import ru.lopon.ui.routes.RoutesViewModel
 import ru.lopon.ui.sensor.SensorTestViewModel
 import ru.lopon.ui.settings.SettingsViewModel
 
-class IosAppContainer private constructor() {
-
-    companion object {
-        val shared: IosAppContainer by lazy { IosAppContainer() }
-    }
+object IosAppContainer {
 
     val timeProvider: TimeProvider = RealTimeProvider()
     val idGenerator: IdGenerator = UuidGenerator()
