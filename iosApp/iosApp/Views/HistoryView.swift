@@ -79,7 +79,7 @@ private struct HistoryRow: View {
         HStack {
             Image(systemName: modeIcon)
                 .frame(width: 32, height: 32)
-                .foregroundStyle(.accentColor)
+                .foregroundStyle(Color.accentColor)
             VStack(alignment: .leading, spacing: 2) {
                 Text(modeLabel + " · " + dateString)
                     .font(.subheadline)

@@ -64,7 +64,7 @@ struct MoreView: View {
             HStack {
                 Image(systemName: icon)
                     .frame(width: 28)
-                    .foregroundStyle(.accentColor)
+                    .foregroundStyle(Color.accentColor)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(title).foregroundStyle(.primary)
                     Text(subtitle).font(.caption).foregroundStyle(.secondary)

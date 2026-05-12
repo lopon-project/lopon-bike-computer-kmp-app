@@ -175,7 +175,7 @@ struct RouteWizardView: View {
         VStack(spacing: 16) {
             Image(systemName: "square.and.arrow.down.on.square")
                 .font(.system(size: 64))
-                .foregroundStyle(.accentColor)
+                .foregroundStyle(Color.accentColor)
             Text("Импорт маршрута из GPX-файла")
                 .font(.headline)
             Text("Выберите файл формата GPX 1.1 — он будет добавлен в список маршрутов.")

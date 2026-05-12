@@ -61,7 +61,7 @@ struct SensorView: View {
                         Text(device.id)
                         if device.isPreviouslyConnected {
                             Text("• подключалось ранее")
-                                .foregroundStyle(.accentColor)
+                                .foregroundStyle(Color.accentColor)
                         }
                     }
                     .font(.caption)
