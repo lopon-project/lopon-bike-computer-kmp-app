@@ -110,9 +110,10 @@ final class SensorTestViewModelObservable: ObservableObject {
         let text = vm.exportLogText()
         if text.isEmpty { return }
         let path = "exports/sensor_log_\(Int(Date().timeIntervalSince1970)).txt"
-        let res = try? await fileStorage.writeText(path: path, content: text)
-        if (res?.isSuccess ?? false) == true {
+        do {
+            _ = try await fileStorage.writeText(path: path, content: text)
             fileStorage.presentShareSheet(path: path)
+        } catch {
         }
     }
 }
