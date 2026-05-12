@@ -84,7 +84,7 @@ private struct RouteRow: View {
         HStack {
             Image(systemName: "map.fill")
                 .frame(width: 32, height: 32)
-                .foregroundStyle(.accentColor)
+                .foregroundStyle(Color.accentColor)
             VStack(alignment: .leading, spacing: 2) {
                 Text(route.name)
                     .font(.subheadline)

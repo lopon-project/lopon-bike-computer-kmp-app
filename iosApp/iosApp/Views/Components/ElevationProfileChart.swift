@@ -35,7 +35,7 @@ struct ElevationProfileChart: View {
                         x: .value("Дистанция", p.distanceKm),
                         y: .value("Высота", p.elevationM)
                     )
-                    .foregroundStyle(.accentColor)
+                    .foregroundStyle(Color.accentColor)
                     .lineStyle(StrokeStyle(lineWidth: 2))
                 }
                 .frame(height: height)
