@@ -13,5 +13,15 @@ object FlowAdapter {
     val mainScope: CoroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 }
 
-fun <T> collectFlow(flow: Flow<T>, onValue: (T) -> Unit): Job =
-    flow.onEach { onValue(it) }.launchIn(FlowAdapter.mainScope)
+class FlowCancelHandle internal constructor(private val job: Job) {
+    fun cancel() {
+        job.cancel()
+    }
+}
+
+@Suppress("UNCHECKED_CAST")
+fun collectFlowAny(flow: Any, onValue: (Any?) -> Unit): FlowCancelHandle {
+    val typed = flow as Flow<Any?>
+    val job = typed.onEach { onValue(it) }.launchIn(FlowAdapter.mainScope)
+    return FlowCancelHandle(job)
+}

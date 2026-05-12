@@ -1,6 +1,8 @@
 package ru.lopon.domain.map
 
+import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.callbackFlow
 
 actual class OfflineMapManager(
     private val helper: PlatformOfflineMapHelper
@@ -12,7 +14,23 @@ actual class OfflineMapManager(
         bounds: CommonBounds,
         minZoom: Double,
         maxZoom: Double
-    ): Flow<DownloadProgress> = helper.downloadRegion(name, bounds, minZoom, maxZoom)
+    ): Flow<DownloadProgress> = callbackFlow {
+        helper.startDownloadRegion(
+            name = name,
+            bounds = bounds,
+            minZoom = minZoom,
+            maxZoom = maxZoom,
+            onProgress = { progress -> trySend(progress) },
+            onComplete = { errorMessage ->
+                if (errorMessage != null) {
+                    close(Exception(errorMessage))
+                } else {
+                    close()
+                }
+            }
+        )
+        awaitClose { }
+    }
 
     actual suspend fun deleteRegion(id: Long): Result<Unit> = helper.deleteRegion(id)
 
