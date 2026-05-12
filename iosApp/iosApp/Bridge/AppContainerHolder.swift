@@ -30,9 +30,9 @@ final class AppContainerHolder: ObservableObject {
 
     func requestInitialPermissions() async {
         let pm = container.permissionsManager
-        _ = await pm.requestPermission(permission: .location)
-        _ = await pm.requestPermission(permission: .bluetooth)
-        _ = await pm.requestPermission(permission: .notification)
+        _ = try? await pm.requestPermission(permission: .location)
+        _ = try? await pm.requestPermission(permission: .bluetooth)
+        _ = try? await pm.requestPermission(permission: .notification)
         await tryAutoReconnectBleIfEnabled()
     }
 
