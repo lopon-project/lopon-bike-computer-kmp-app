@@ -16,6 +16,9 @@ final class AppContainerHolder: ObservableObject {
     let routeWizard: RouteWizardViewModelObservable
     let offlineMaps: OfflineMapsViewModelObservable
 
+    @Published private(set) var gpsStatus: LocationStatus = .disabled
+    private var gpsStatusJob: FlowJob?
+
     init(_ container: IosAppContainer) {
         self.container = container
         self.trip = TripViewModelObservable(TripViewModel(container: container))
@@ -26,6 +29,13 @@ final class AppContainerHolder: ObservableObject {
         self.sensorTest = SensorTestViewModelObservable(container.sensorTestViewModel, fileStorage: container.fileStorage)
         self.routeWizard = RouteWizardViewModelObservable(RouteWizardViewModel(container: container))
         self.offlineMaps = OfflineMapsViewModelObservable(OfflineMapsViewModel(container: container))
+
+        if let initial = container.locationProvider.status.value as? LocationStatus {
+            self.gpsStatus = initial
+        }
+        self.gpsStatusJob = observe(container.locationProvider.status) { [weak self] (s: LocationStatus) in
+            self?.gpsStatus = s
+        }
     }
 
     func requestInitialPermissions() async {

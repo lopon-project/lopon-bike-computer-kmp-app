@@ -9,27 +9,19 @@ final class SwiftMapLibreOfflineHelper: NSObject, PlatformOfflineMapHelper {
     private let storage = MLNOfflineStorage.shared
 
     func listRegions() async throws -> [OfflineRegionInfo] {
-        try await withCheckedThrowingContinuation { continuation in
-            storage.getPacks { packs, error in
-                if let err = error {
-                    continuation.resume(throwing: err)
-                    return
-                }
-                let result = (packs ?? []).enumerated().map { (idx, pack) -> OfflineRegionInfo in
-                    let progress = pack.progress
-                    let name = (try? Self.decodeName(from: pack.context)) ?? "Region \(idx + 1)"
-                    return OfflineRegionInfo(
-                        id: Int64(idx),
-                        name: name,
-                        completedResources: Int64(progress.countOfResourcesCompleted),
-                        requiredResources: Int64(progress.countOfResourcesExpected),
-                        completedSize: Int64(progress.countOfBytesCompleted),
-                        isComplete: progress.countOfResourcesCompleted >= progress.countOfResourcesExpected
-                                   && progress.countOfResourcesExpected > 0
-                    )
-                }
-                continuation.resume(returning: result)
-            }
+        let packs = storage.packs ?? []
+        return packs.enumerated().map { (idx, pack) -> OfflineRegionInfo in
+            let progress = pack.progress
+            let name = (try? Self.decodeName(from: pack.context)) ?? "Region \(idx + 1)"
+            return OfflineRegionInfo(
+                id: Int64(idx),
+                name: name,
+                completedResources: Int64(progress.countOfResourcesCompleted),
+                requiredResources: Int64(progress.countOfResourcesExpected),
+                completedSize: Int64(progress.countOfBytesCompleted),
+                isComplete: progress.countOfResourcesCompleted >= progress.countOfResourcesExpected
+                           && progress.countOfResourcesExpected > 0
+            )
         }
     }
 
@@ -99,26 +91,20 @@ final class SwiftMapLibreOfflineHelper: NSObject, PlatformOfflineMapHelper {
     }
 
     func deleteRegion(id: Int64) async throws -> Any? {
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Any?, Error>) in
-            storage.getPacks { packs, error in
-                if let err = error {
+        let packs = storage.packs ?? []
+        guard Int(id) >= 0, Int(id) < packs.count else {
+            throw NSError(
+                domain: "Lopon",
+                code: 404,
+                userInfo: [NSLocalizedDescriptionKey: "Region not found"]
+            )
+        }
+        return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Any?, Error>) in
+            storage.removePack(packs[Int(id)]) { err in
+                if let err = err {
                     continuation.resume(throwing: err)
-                    return
-                }
-                guard let packs = packs, Int(id) >= 0, Int(id) < packs.count else {
-                    continuation.resume(throwing: NSError(
-                        domain: "Lopon",
-                        code: 404,
-                        userInfo: [NSLocalizedDescriptionKey: "Region not found"]
-                    ))
-                    return
-                }
-                self.storage.removePack(packs[Int(id)]) { err in
-                    if let err = err {
-                        continuation.resume(throwing: err)
-                    } else {
-                        continuation.resume(returning: nil)
-                    }
+                } else {
+                    continuation.resume(returning: nil)
                 }
             }
         }

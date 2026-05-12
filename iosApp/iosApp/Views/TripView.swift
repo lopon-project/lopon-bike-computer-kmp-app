@@ -83,7 +83,7 @@ struct TripView: View {
             StatusIndicators(
                 bleConnected: holder.trip.state.isConnected,
                 bleConnectionState: holder.trip.state.connectionState,
-                gpsStatus: holder.container.locationProvider.status.value,
+                gpsStatus: holder.gpsStatus,
                 mode: holder.trip.state.selectedMode
             )
             Spacer()
