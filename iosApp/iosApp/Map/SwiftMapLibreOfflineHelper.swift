@@ -2,7 +2,7 @@ import Foundation
 import MapLibre
 import ComposeApp
 
-@objc final class SwiftMapLibreOfflineHelper: NSObject, PlatformOfflineMapHelper {
+final class SwiftMapLibreOfflineHelper: NSObject, PlatformOfflineMapHelper {
 
     static let defaultStyleUrl = "https://tiles.openfreemap.org/styles/liberty"
 
@@ -33,16 +33,14 @@ import ComposeApp
         }
     }
 
-    func downloadRegion(name: String,
-                        bounds: CommonBounds,
-                        minZoom: Double,
-                        maxZoom: Double) -> Kotlinx_coroutines_coreFlow {
-        let flow = MutableSharedFlowKt.MutableSharedFlow(
-            replay: 1,
-            extraBufferCapacity: 64,
-            onBufferOverflow: BufferOverflow.dropOldest
-        )
-
+    func startDownloadRegion(
+        name: String,
+        bounds: CommonBounds,
+        minZoom: Double,
+        maxZoom: Double,
+        onProgress: @escaping (DownloadProgress) -> Void,
+        onComplete: @escaping (String?) -> Void
+    ) {
         let sw = CLLocationCoordinate2D(latitude: bounds.southWest.lat,
                                         longitude: bounds.southWest.lng)
         let ne = CLLocationCoordinate2D(latitude: bounds.northEast.lat,
@@ -50,7 +48,8 @@ import ComposeApp
         let mlBounds = MLNCoordinateBounds(sw: sw, ne: ne)
 
         guard let styleURL = URL(string: Self.defaultStyleUrl) else {
-            return flow
+            onComplete("Invalid style URL")
+            return
         }
 
         let region = MLNTilePyramidOfflineRegion(
@@ -72,46 +71,53 @@ import ComposeApp
             let percentage: Float = progress.countOfResourcesExpected > 0
                 ? Float(progress.countOfResourcesCompleted) / Float(progress.countOfResourcesExpected)
                 : 0
-            _ = flow.tryEmit(value: DownloadProgress(
+            onProgress(DownloadProgress(
                 completedResources: Int64(progress.countOfResourcesCompleted),
                 requiredResources: Int64(progress.countOfResourcesExpected),
                 completedSize: Int64(progress.countOfBytesCompleted),
                 percentage: percentage
             ))
             if progress.countOfResourcesCompleted >= progress.countOfResourcesExpected
-               && progress.countOfResourcesExpected > 0,
-               let obs = observer {
-                NotificationCenter.default.removeObserver(obs)
+               && progress.countOfResourcesExpected > 0 {
+                if let obs = observer {
+                    NotificationCenter.default.removeObserver(obs)
+                }
+                onComplete(nil)
             }
         }
 
         storage.addPack(for: region, withContext: context) { pack, error in
             if let err = error {
-                NSLog("[Lopon] addPack error: \(err.localizedDescription)")
+                if let obs = observer {
+                    NotificationCenter.default.removeObserver(obs)
+                }
+                onComplete(err.localizedDescription)
                 return
             }
             pack?.resume()
         }
-
-        return flow
     }
 
-    func deleteRegion(id: Int64) async throws -> ResultBox<KotlinUnit> {
-        try await withCheckedThrowingContinuation { continuation in
+    func deleteRegion(id: Int64) async throws -> Any? {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Any?, Error>) in
             storage.getPacks { packs, error in
                 if let err = error {
-                    continuation.resume(returning: ResultBox<KotlinUnit>.failure(message: err.localizedDescription))
+                    continuation.resume(throwing: err)
                     return
                 }
                 guard let packs = packs, Int(id) >= 0, Int(id) < packs.count else {
-                    continuation.resume(returning: ResultBox<KotlinUnit>.failure(message: "Region not found"))
+                    continuation.resume(throwing: NSError(
+                        domain: "Lopon",
+                        code: 404,
+                        userInfo: [NSLocalizedDescriptionKey: "Region not found"]
+                    ))
                     return
                 }
                 self.storage.removePack(packs[Int(id)]) { err in
                     if let err = err {
-                        continuation.resume(returning: ResultBox<KotlinUnit>.failure(message: err.localizedDescription))
+                        continuation.resume(throwing: err)
                     } else {
-                        continuation.resume(returning: ResultBox<KotlinUnit>.success())
+                        continuation.resume(returning: nil)
                     }
                 }
             }
@@ -155,20 +161,5 @@ import ComposeApp
             return name
         }
         return "Region"
-    }
-}
-
-@objc public final class ResultBox<T: AnyObject>: NSObject {
-    @objc public let isSuccess: Bool
-    @objc public let errorMessage: String?
-
-    private init(success: Bool, error: String?) {
-        self.isSuccess = success
-        self.errorMessage = error
-    }
-
-    @objc public static func success() -> ResultBox<T> { .init(success: true, error: nil) }
-    @objc public static func failure(message: String) -> ResultBox<T> {
-        .init(success: false, error: message)
     }
 }
